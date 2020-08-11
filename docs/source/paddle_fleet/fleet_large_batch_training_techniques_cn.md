@@ -11,7 +11,7 @@
 ### 效果复现的例子
 添加依赖
 
-```
+```python
 import numpy as np
 import fleet_lightning as lighting
 import paddle.fluid as fluid
@@ -21,7 +21,7 @@ import paddle.fleet as fleet
 import paddle
 ```
 初始化
-```
+```python
 configs = lighting.parse_train_configs()
 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
@@ -40,7 +40,7 @@ data_loader = model.load_digital_dataset_from_file(
 ```
 定义strategy以及optimizer
 
-```
+```python
 place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
 exec_strategy = fluid.ExecutionStrategy()
 exec_strategy.num_threads = 2
@@ -56,7 +56,7 @@ optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 ```
 开始训练
-```
+```python
 exe = fluid.Executor(place)
 exe.run(fluid.default_startup_program())
 

@@ -1,14 +1,15 @@
-## 使用超大Batch进行训练
+# 使用超大Batch进行训练
 
-### 简介 + strategy列表
+## 简介 + strategy列表
 
-### Recompute
+## Recompute
 
-Recompute 介绍
+### Recompute 介绍
 
-Recompute 效果
+### Recompute 效果
 
-效果复现的例子
+### 效果复现的例子
+
 
 ### Lars
 

@@ -1,4 +1,4 @@
-## Quick Start of Fleet in Paddle
+## 快速开始
 以下通过图像分类Resnet50的例子，说明如何使用FleetX的接口进行分布式训练。具体步骤如下：
 
 1. 导入依赖

@@ -2,9 +2,21 @@
 
 ## 简介 + strategy列表
 
-## Recompute
+随着训练数据规模的逐渐增加，训练更大、更深的深度学习模型成为一个主流趋势。目前的深度学习模型训练，通常要求保留前向计算的隐层结果，并且需要保存结果的数量会随着模型层数的增加线性增加，这对于目前能够使用的AI芯片的内存大小是个挑战。Fleet中提供了两种扩大训练batch大小的策略：Forward Recomputation Backpropagation (FRB) 以及 Gradient Merge。下面我们将分别对这两个策略进行讲解，并会基于BERT模型提供使用样例。
+## Forward Recompute Backpropagation
 
-### Recompute 介绍
+### 策略简介
+
+众所周知，深度学习网络的一轮训练迭代包含三个步骤：
+
+- **前向计算**：运行前向算子（Operator）来计算中间隐层（Variable）的值
+- **反向计算**：运行反向算子来计算参数（Parameter）的梯度
+- **参数更新**：应用优化算法来更新参数的值
+
+在前向计算过程中，前向算子会输出大量的中间计算结果，在Paddle中，会使用**Variable**来存储这些隐层的中间结果。有些中间结果在反向计算中会做为反向算子的输入，这些中间结果会被储存在内存中直到相应的反向算子计算完毕。当模型层数加深时，需要储存的中间结果数量可达成千上万个，占据大量的内存。
+
+Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络切分为k个部分（segments）。
+
 
 ### Recompute 效果
 
@@ -78,5 +90,5 @@ for i, data in enumerate(data_loader()):
 ```
 
 
-## Lars
+## Gradient Merge
 

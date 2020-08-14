@@ -1,11 +1,9 @@
 import os
-import numpy as np
 import fleetx as X
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import time
 import paddle.distributed.fleet as fleet
-import paddle
 
 
 configs = X.parse_train_configs()
@@ -20,15 +18,15 @@ data_loader = model.load_digital_dataset_from_file(
     batch_size=53,
 )
 
-place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
 dist_strategy = fleet.DistributedStrategy()
 dist_strategy.recompute = True
+#dist_strategy.amp = True
 dist_strategy.recompute_configs = {"checkpoints": model.checkpoints}
 optimizer = fluid.optimizer.Adam(learning_rate=configs.lr)
 optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 
-
+place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
 exe = fluid.Executor(place)
 exe.run(fluid.default_startup_program())
 total_time = 0

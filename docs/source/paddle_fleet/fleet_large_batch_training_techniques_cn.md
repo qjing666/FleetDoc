@@ -27,65 +27,77 @@ Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络�
 
 通过在BERT模型上的测试，Recompute可将batch size扩大近三倍。同时也可以配合混合精度使用来进一步提升batch size及训练速度。
 
+- **Bert_large**: 
 
-### Recompute 效果
+|Model|Baseline|Recompute| Recompute + mixed precision|
+|:---:|:---:|:---:|:---:|
+|batch size| 14 | 53 | 87 |
+|speed|18.2 sents/s| 12.88 sents/s| 19.14 sents/s |
+
 
 ### 效果复现的例子
-添加依赖
+
+首先，下载训练所用到的数据及词表
+```sh
+wget --no-check-certificate https://fleet.bj.bcebos.com/Bertdata/train_data.tar.gz
+tar -xf train_data.tar.gz
+wget --no-check-certificate https://fleet.bj.bcebos.com/Bertdata/vocab.txt
+```
+
+然后我们就可以使用fleet API完成BERT的分布式训练程序了（假设脚本名称为bert_app.py）：
+#### 添加依赖
 
 ```python
-import numpy as np
-import fleet_lightning as lighting
+import os
+import fleetx as X
 import paddle.fluid as fluid
-import paddle.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 import time
-import paddle.fleet as fleet
-import paddle
+import paddle.distributed.fleet as fleet
 ```
-初始化
+
+#### 初始化
 ```python
-configs = lighting.parse_train_configs()
+configs = X.parse_train_configs()
 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 ```
-加载网络（lightning）
+#### 加载模型及数据
 ```
 model = lighting.applications.Bert_large()
-#model = lighting.applications.Bert_base()
 
 data_loader = model.load_digital_dataset_from_file(
-    data_dir='/home/mapingshuo/Fleet/benchmark/collective/bert/data/train/', 
-    vocab_path='/home/mapingshuo/Fleet/benchmark/collective/bert/uncased_L-24_H-1024_A-16//vocab.txt',
+    data_dir='./train_data',
+    vocab_path='./vocab.txt',
     max_seq_len=512,
-    batch_size=12,
+    batch_size=53,
 )
 ```
-定义strategy以及optimizer
+
+#### 定义strategy以及optimizer
 
 ```python
-place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
-exec_strategy = fluid.ExecutionStrategy()
-exec_strategy.num_threads = 2
-exec_strategy.num_iteration_per_drop_scope = 1
 dist_strategy = fleet.DistributedStrategy()
-dist_strategy.execution_strategy = exec_strategy
-dist_strategy.recompute = False
-dist_strategy.nccl_comm_num = 3
-dist_strategy.use_hierarchical_allreduce = True
+# 使用Recompute，并设置checkpoints
+dist_strategy.recompute = True
+dist_strategy.recompute_configs = {"checkpoints": model.checkpoints}
 
 optimizer = fluid.optimizer.Adam(learning_rate=configs.lr)
 optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 ```
-开始训练
+
+#### 开始训练
 ```python
+place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
 exe = fluid.Executor(place)
 exe.run(fluid.default_startup_program())
 
+total_time = 0
 for i, data in enumerate(data_loader()):
     if i >= 10:
         start_time = time.time()
-    cost_val = exe.run(paddle.default_main_program(),
+    cost_val = exe.run(fluid.default_main_program(),
                        feed=data,
                        fetch_list=[model.loss.name])
     if i >= 10:
@@ -95,10 +107,12 @@ for i, data in enumerate(data_loader()):
             "worker_index: %d, step%d cost = %f, total time cost = %f, step per second: %f, speed: %f"
             % (fleet.worker_index(), i, cost_val[0], total_time,
                (i - 9) / total_time, 1 / (end_time - start_time)))
-    print("step: %d, encoder_layer_16_ffn_fc_1.w_0: %s" % (
-         i, scope.var("encoder_layer_16_ffn_fc_1.w_0").get_tensor().__array__()))
 ```
+完成脚本的编写后我们就可以使用以下命令开始训练：
 
+```sh
+fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
+```
 
 ## Gradient Merge
 

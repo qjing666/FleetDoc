@@ -1,0 +1,136 @@
+Please save your target first
+2020-08-14 17:31:23,029-WARNING: set enable_sequential_execution=True since you have enable the recompute strategy
+W0814 17:31:23.308480 64347 device_context.cc:268] Please NOTE: device: 4, CUDA Capability: 70, Driver API Version: 10.1, Runtime API Version: 9.2
+W0814 17:31:23.312814 64347 device_context.cc:276] device: 4, cuDNN Version: 7.4.
+E0814 17:31:29.006538494   69432 tcp_server_posix.cc:64]     check for SO_REUSEPORT: {"created":"@1597397489.006527439","description":"SO_REUSEPORT unavailable on compiling system","file":"src/core/lib/iomgr/socket_utils_common_posix.cc","file_line":163}
+I0814 17:31:29.007256 69432 grpc_server.cc:480] Server listening on 127.0.0.1:10287 successful, selected port: 10287
+I0814 17:31:37.468308 64347 build_strategy.cc:361] set enable_sequential_execution:1
+W0814 17:31:37.846832 64347 fuse_all_reduce_op_pass.cc:75] Find all_reduce operators: 398. To make the speed faster, some all_reduce ops are fused during training, after fusion, the number of all_reduce ops is 251.
+W0814 17:32:11.541432 70262 operator.cc:189] mul_grad raises an exception paddle::memory::allocation::BadAlloc, 
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   ThreadPool::ThreadPool(unsigned long)::{lambda()#1}::operator()() const
+1   std::__future_base::_State_base::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>&, bool&)
+2   std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>, std::__future_base::_Result_base::_Deleter>, void> >::_M_invoke(std::_Any_data const&)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::RunOp(paddle::framework::details::OpHandleBase*, std::shared_ptr<paddle::framework::BlockingQueue<unsigned long> > const&, unsigned long*)
+4   paddle::framework::details::FastThreadedSSAGraphExecutor::RunOpSync(paddle::framework::details::OpHandleBase*)
+5   paddle::framework::details::ComputationOpHandle::RunImpl()
+6   paddle::framework::details::OpHandleBase::RunAndRecordEvent(std::function<void ()> const&)
+7   paddle::framework::OperatorBase::Run(paddle::framework::Scope const&, paddle::platform::Place const&)
+8   paddle::framework::OperatorWithKernel::RunImpl(paddle::framework::Scope const&, paddle::platform::Place const&) const
+9   paddle::framework::OperatorWithKernel::RunImpl(paddle::framework::Scope const&, paddle::platform::Place const&, paddle::framework::RuntimeContext*) const
+10  std::_Function_handler<void (paddle::framework::ExecutionContext const&), paddle::framework::OpKernelRegistrarFunctor<paddle::platform::CUDAPlace, false, 0ul, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, float>, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, double>, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, paddle::platform::float16> >::operator()(char const*, char const*, int) const::{lambda(paddle::framework::ExecutionContext const&)#1}>::_M_invoke(std::_Any_data const&, paddle::framework::ExecutionContext const&)
+11  paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, float>::Compute(paddle::framework::ExecutionContext const&) const
+12  paddle::framework::Tensor::mutable_data(paddle::platform::Place const&, paddle::framework::proto::VarType_Type, unsigned long)
+13  paddle::memory::AllocShared(paddle::platform::Place const&, unsigned long)
+14  paddle::memory::allocation::AllocatorFacade::AllocShared(paddle::platform::Place const&, unsigned long)
+15  paddle::memory::allocation::AllocatorFacade::Alloc(paddle::platform::Place const&, unsigned long)
+16  paddle::memory::allocation::RetryAllocator::AllocateImpl(unsigned long)
+17  paddle::memory::allocation::Allocator::Allocate(unsigned long)
+18  paddle::memory::allocation::AutoGrowthBestFitAllocator::AllocateImpl(unsigned long)
+19  paddle::memory::allocation::AlignedAllocator::AllocateImpl(unsigned long)
+20  paddle::memory::allocation::CUDAAllocator::AllocateImpl(unsigned long)
+21  paddle::memory::allocation::BadAlloc::BadAlloc(std::string, char const*, int)
+22  paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+ResourceExhaustedError: 
+
+Out of memory error on GPU 4. Cannot allocate 422.343994MB memory on GPU 4, available memory is only 214.875000MB.
+
+Please check whether there is any other process using GPU 4.
+1. If yes, please stop them, or start PaddlePaddle on another GPU.
+2. If no, please decrease the batch size of your model. 
+
+ at (/home/jingqinghe/Paddle/paddle/fluid/memory/allocation/cuda_allocator.cc:69)
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ParallelExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+1   paddle::framework::details::ScopeBufferedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+2   paddle::framework::details::ScopeBufferedMonitor::Apply(std::function<void ()> const&, bool)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+4   paddle::framework::SignalHandle(char const*, int)
+5   paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: A serious error (Termination signal) is detected by the operating system. at (/home/jingqinghe/Paddle/paddle/fluid/platform/init.cc:284)
+  [TimeInfo: *** Aborted at 1597397534 (unix time) try "date -d @1597397534" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x3890000f967) received by PID 64347 (TID 0x7f4413518700) from PID 63847 ***]
+
+Please save your target first
+2020-08-14 17:35:28,951-WARNING: set enable_sequential_execution=True since you have enable the recompute strategy
+W0814 17:35:29.230242 108303 device_context.cc:268] Please NOTE: device: 4, CUDA Capability: 70, Driver API Version: 10.1, Runtime API Version: 9.2
+W0814 17:35:29.234717 108303 device_context.cc:276] device: 4, cuDNN Version: 7.4.
+E0814 17:35:34.639956621  113855 tcp_server_posix.cc:64]     check for SO_REUSEPORT: {"created":"@1597397734.639943567","description":"SO_REUSEPORT unavailable on compiling system","file":"src/core/lib/iomgr/socket_utils_common_posix.cc","file_line":163}
+I0814 17:35:34.640794 113855 grpc_server.cc:480] Server listening on 127.0.0.1:19987 successful, selected port: 19987
+I0814 17:35:42.577356 108303 build_strategy.cc:361] set enable_sequential_execution:1
+W0814 17:35:42.974694 108303 fuse_all_reduce_op_pass.cc:75] Find all_reduce operators: 398. To make the speed faster, some all_reduce ops are fused during training, after fusion, the number of all_reduce ops is 251.
+W0814 17:36:21.321905 114971 operator.cc:189] mul_grad raises an exception paddle::memory::allocation::BadAlloc, 
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   ThreadPool::ThreadPool(unsigned long)::{lambda()#1}::operator()() const
+1   std::__future_base::_State_base::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>&, bool&)
+2   std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>, std::__future_base::_Result_base::_Deleter>, void> >::_M_invoke(std::_Any_data const&)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::RunOp(paddle::framework::details::OpHandleBase*, std::shared_ptr<paddle::framework::BlockingQueue<unsigned long> > const&, unsigned long*)
+4   paddle::framework::details::FastThreadedSSAGraphExecutor::RunOpSync(paddle::framework::details::OpHandleBase*)
+5   paddle::framework::details::ComputationOpHandle::RunImpl()
+6   paddle::framework::details::OpHandleBase::RunAndRecordEvent(std::function<void ()> const&)
+7   paddle::framework::OperatorBase::Run(paddle::framework::Scope const&, paddle::platform::Place const&)
+8   paddle::framework::OperatorWithKernel::RunImpl(paddle::framework::Scope const&, paddle::platform::Place const&) const
+9   paddle::framework::OperatorWithKernel::RunImpl(paddle::framework::Scope const&, paddle::platform::Place const&, paddle::framework::RuntimeContext*) const
+10  std::_Function_handler<void (paddle::framework::ExecutionContext const&), paddle::framework::OpKernelRegistrarFunctor<paddle::platform::CUDAPlace, false, 0ul, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, float>, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, double>, paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, paddle::platform::float16> >::operator()(char const*, char const*, int) const::{lambda(paddle::framework::ExecutionContext const&)#1}>::_M_invoke(std::_Any_data const&, paddle::framework::ExecutionContext const&)
+11  paddle::operators::MulGradKernel<paddle::platform::CUDADeviceContext, float>::Compute(paddle::framework::ExecutionContext const&) const
+12  paddle::framework::Tensor::mutable_data(paddle::platform::Place const&, paddle::framework::proto::VarType_Type, unsigned long)
+13  paddle::memory::AllocShared(paddle::platform::Place const&, unsigned long)
+14  paddle::memory::allocation::AllocatorFacade::AllocShared(paddle::platform::Place const&, unsigned long)
+15  paddle::memory::allocation::AllocatorFacade::Alloc(paddle::platform::Place const&, unsigned long)
+16  paddle::memory::allocation::RetryAllocator::AllocateImpl(unsigned long)
+17  paddle::memory::allocation::Allocator::Allocate(unsigned long)
+18  paddle::memory::allocation::AutoGrowthBestFitAllocator::AllocateImpl(unsigned long)
+19  paddle::memory::allocation::AlignedAllocator::AllocateImpl(unsigned long)
+20  paddle::memory::allocation::CUDAAllocator::AllocateImpl(unsigned long)
+21  paddle::memory::allocation::BadAlloc::BadAlloc(std::string, char const*, int)
+22  paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+ResourceExhaustedError: 
+
+Out of memory error on GPU 4. Cannot allocate 400.562744MB memory on GPU 4, available memory is only 190.875000MB.
+
+Please check whether there is any other process using GPU 4.
+1. If yes, please stop them, or start PaddlePaddle on another GPU.
+2. If no, please decrease the batch size of your model. 
+
+ at (/home/jingqinghe/Paddle/paddle/fluid/memory/allocation/cuda_allocator.cc:69)
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ParallelExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+1   paddle::framework::details::ScopeBufferedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+2   paddle::framework::details::ScopeBufferedMonitor::Apply(std::function<void ()> const&, bool)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+4   paddle::framework::SignalHandle(char const*, int)
+5   paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: A serious error (Termination signal) is detected by the operating system. at (/home/jingqinghe/Paddle/paddle/fluid/platform/init.cc:284)
+  [TimeInfo: *** Aborted at 1597397786 (unix time) try "date -d @1597397786" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x3890001a61e) received by PID 108303 (TID 0x7f8e615b7700) from PID 108062 ***]
+

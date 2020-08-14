@@ -1,0 +1,54 @@
+Please save your target first
+2020-08-14 17:31:22,842-WARNING: set enable_sequential_execution=True since you have enable the recompute strategy
+W0814 17:31:23.103979 64343 device_context.cc:268] Please NOTE: device: 3, CUDA Capability: 70, Driver API Version: 10.1, Runtime API Version: 9.2
+W0814 17:31:23.108440 64343 device_context.cc:276] device: 3, cuDNN Version: 7.4.
+E0814 17:31:28.374747820   68637 tcp_server_posix.cc:64]     check for SO_REUSEPORT: {"created":"@1597397488.374735347","description":"SO_REUSEPORT unavailable on compiling system","file":"src/core/lib/iomgr/socket_utils_common_posix.cc","file_line":163}
+I0814 17:31:28.375659 68637 grpc_server.cc:480] Server listening on 127.0.0.1:42478 successful, selected port: 42478
+I0814 17:31:37.468302 64343 build_strategy.cc:361] set enable_sequential_execution:1
+W0814 17:31:37.814579 64343 fuse_all_reduce_op_pass.cc:75] Find all_reduce operators: 398. To make the speed faster, some all_reduce ops are fused during training, after fusion, the number of all_reduce ops is 251.
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ParallelExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+1   paddle::framework::details::ScopeBufferedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+2   paddle::framework::details::ScopeBufferedMonitor::Apply(std::function<void ()> const&, bool)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+4   paddle::framework::SignalHandle(char const*, int)
+5   paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: A serious error (Termination signal) is detected by the operating system. at (/home/jingqinghe/Paddle/paddle/fluid/platform/init.cc:284)
+  [TimeInfo: *** Aborted at 1597397534 (unix time) try "date -d @1597397534" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x3890000f967) received by PID 64343 (TID 0x7f26d848b700) from PID 63847 ***]
+
+Please save your target first
+2020-08-14 17:35:28,879-WARNING: set enable_sequential_execution=True since you have enable the recompute strategy
+W0814 17:35:29.142311 108286 device_context.cc:268] Please NOTE: device: 3, CUDA Capability: 70, Driver API Version: 10.1, Runtime API Version: 9.2
+W0814 17:35:29.146646 108286 device_context.cc:276] device: 3, cuDNN Version: 7.4.
+E0814 17:35:34.627435075  113845 tcp_server_posix.cc:64]     check for SO_REUSEPORT: {"created":"@1597397734.627423641","description":"SO_REUSEPORT unavailable on compiling system","file":"src/core/lib/iomgr/socket_utils_common_posix.cc","file_line":163}
+I0814 17:35:34.628247 113845 grpc_server.cc:480] Server listening on 127.0.0.1:37776 successful, selected port: 37776
+I0814 17:35:42.577273 108286 build_strategy.cc:361] set enable_sequential_execution:1
+W0814 17:35:42.921293 108286 fuse_all_reduce_op_pass.cc:75] Find all_reduce operators: 398. To make the speed faster, some all_reduce ops are fused during training, after fusion, the number of all_reduce ops is 251.
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ParallelExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+1   paddle::framework::details::ScopeBufferedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+2   paddle::framework::details::ScopeBufferedMonitor::Apply(std::function<void ()> const&, bool)
+3   paddle::framework::details::FastThreadedSSAGraphExecutor::Run(std::vector<std::string, std::allocator<std::string> > const&, bool)
+4   paddle::framework::SignalHandle(char const*, int)
+5   paddle::platform::GetCurrentTraceBackString()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: A serious error (Termination signal) is detected by the operating system. at (/home/jingqinghe/Paddle/paddle/fluid/platform/init.cc:284)
+  [TimeInfo: *** Aborted at 1597397786 (unix time) try "date -d @1597397786" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x3890001a61e) received by PID 108286 (TID 0x7f25de16d700) from PID 108062 ***]
+

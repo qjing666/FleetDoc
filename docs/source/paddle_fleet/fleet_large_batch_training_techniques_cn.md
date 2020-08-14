@@ -21,7 +21,7 @@ Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络�
 
 下图是由4个fc Layer、3个relu Layer、1个sigmoid Layer和1个log-loss Layer串联而成的一个网络：最左侧为其前向计算流程、中间是普通的前向计算和反向计算流程、最右侧为添加FRB后的前向计算和反向计算流程。其中方框代表算子(Operator)，红点代表前向计算的中间结果、蓝点代表checkpoints。
 
-<img src='img/recompute.png' width = "1000" height = "584" align="middle"/>
+<img src='./img/recompute.png' width = "1000" height = "584" align="middle"/>
 
 添加FRB后，前向计算中需要存储的中间Variable从4个(红点)变为2个(蓝点)， 从而节省了这部分内存。当然了，重计算的部分也产生了新的中间变量， 这就需要根据实际情况来做权衡了。这个例子里的网络比较浅，通常来讲， 对层数较深的网络，FRB节省的内存要远多于新增加的内存。
 

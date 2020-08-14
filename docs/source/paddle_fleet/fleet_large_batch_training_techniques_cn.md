@@ -64,7 +64,7 @@ fleet.init(role)
 ```
 #### 加载模型及数据
 ```
-model = lighting.applications.Bert_large()
+model = X.applications.Bert_large()
 
 data_loader = model.load_digital_dataset_from_file(
     data_dir='./train_data',

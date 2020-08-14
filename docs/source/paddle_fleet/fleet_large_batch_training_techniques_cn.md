@@ -15,7 +15,17 @@
 
 在前向计算过程中，前向算子会输出大量的中间计算结果，在Paddle中，会使用**Variable**来存储这些隐层的中间结果。有些中间结果在反向计算中会做为反向算子的输入，这些中间结果会被储存在内存中直到相应的反向算子计算完毕。当模型层数加深时，需要储存的中间结果数量可达成千上万个，占据大量的内存。
 
-Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络切分为k个部分（segments）。
+Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络切分为k个部分（segments）。对每个segment而言：前向计算时，除了小部分必须存储在内存中的Variable外(我们后续会讨论这些特殊Variable)，其他中间结果都将被删除；在反向计算中，首先重新计算一遍前向算子，以获得中间结果，再运行反向算子。简而言之，FRB和普通的网络迭代相比，多计算了一遍前向算子。
+
+我们把切分网络的变量叫做checkpoints。那么该如何选择这些checkpoints呢？我们知道深度学习网络通常是由一个个模块串联得到的，比如ResNet-50由16个block串联而成， Bert-Large由24个transformer串联而成，以两个子模块中间的变量作为切分点就是一个很好的选择。 对于非串联的网络（比如含有大量shortcut结构的网络），FRB也支持对其做切分， 只是可能多耗费一点内存（用于存储shortcut的Variable）。同时我们也可以通过一些动态规划的算法，根据指定的内存自动搜索合适的checkpoints，来支持各种网络结构。
+
+下图是由4个fc Layer、3个relu Layer、1个sigmoid Layer和1个log-loss Layer串联而成的一个网络：最左侧为其前向计算流程、中间是普通的前向计算和反向计算流程、最右侧为添加FRB后的前向计算和反向计算流程。其中方框代表算子(Operator)，红点代表前向计算的中间结果、蓝点代表checkpoints。
+
+<img src='img/recompute.png' width = "1000" height = "584" align="middle"/>
+
+添加FRB后，前向计算中需要存储的中间Variable从4个(红点)变为2个(蓝点)， 从而节省了这部分内存。当然了，重计算的部分也产生了新的中间变量， 这就需要根据实际情况来做权衡了。这个例子里的网络比较浅，通常来讲， 对层数较深的网络，FRB节省的内存要远多于新增加的内存。
+
+通过在BERT模型上的测试，Recompute可将batch size扩大近三倍。同时也可以配合混合精度使用来进一步提升batch size及训练速度。
 
 
 ### Recompute 效果

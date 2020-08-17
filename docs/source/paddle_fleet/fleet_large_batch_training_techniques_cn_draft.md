@@ -14,7 +14,7 @@ wget --no-check-certificate https://fleet.bj.bcebos.com/Bertdata/vocab.txt
 ```
 ## Forward Recompute Backpropagation
 
-首先，我们来介绍Fleet中通过 Forward Recompute Backpropagation 策略增大 BERT 模型在分布式训练中 batch size 的方法（假设脚本名称为bert_app.py）：
+首先，我们来介绍Fleet中通过 Forward Recompute Backpropagation 策略增大 BERT 模型在分布式训练中 batch size 的方法（假设脚本名称为bert_recompute.py）：
 
 ### 添加依赖
 
@@ -98,7 +98,9 @@ for i, data in enumerate(data_loader()):
 ```sh
 fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 ```
-### 策略简介
+### 效果测试
+
+我们在BERT模型上对recompute的效果进行了测试，使用Recompute后batch size可以扩大近3倍。与混合精度一起使用时，batch_size可以进一步扩大。
 
 - **Bert_large**: 
 
@@ -109,16 +111,9 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 
 
 
-fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
-```
+
 
 ## Gradient Merge
-
-在分布式训练中，经常遇到显存或者内存不足的情况，该问题通常由以下原因导致：
-
-- 输入过大（batch size过大或视频等较大的数据）
-- 中间层输出占据的显存超出了显存大小
-- 参数过大（如CPU的embedding）
 
 GradientMerge 策略的做法为：将大batch的输入切分成若干小batch，并对这些小batch分别进行 "前向+反向" 网络计算从而得到梯度。其间会有一部分显存/内存用于存放梯度，对每个小batch计算出的梯度进行叠加，在计算完所有小batch后用累加的梯度对模型进行更新。
 通过GradientMerge 策略，用户只需要定义大batch被分割的粒度便可以实现大batch训练的目的。

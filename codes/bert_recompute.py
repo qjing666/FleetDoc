@@ -1,8 +1,8 @@
 import os
-import fleetx as X
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import time
+import paddle
+import fleetx as X
+import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
 

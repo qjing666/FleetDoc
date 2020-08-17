@@ -2,6 +2,7 @@
 
 ## 简介 + strategy列表
 
+
 随着训练数据规模的逐渐增加，训练更大、更深的深度学习模型成为一个主流趋势。目前的深度学习模型训练，通常要求保留前向计算的隐层结果，并且需要保存结果的数量会随着模型层数的增加线性增加，这对于目前能够使用的AI芯片的内存大小是个挑战。Fleet中提供了两种扩大训练batch大小的策略：Forward Recomputation Backpropagation (FRB) 以及 Gradient Merge。下面我们将分别对这两个策略进行讲解，并会基于BERT模型提供使用样例。
 ## Forward Recompute Backpropagation
 
@@ -35,7 +36,7 @@ Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络�
 |speed|18.2 sents/s| 12.88 sents/s| 19.14 sents/s |
 
 
-### 效果复现
+### 应用实例
 
 首先，下载训练所用到的数据及词表
 ```sh
@@ -115,4 +116,16 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 ```
 
 ## Gradient Merge
+
+在分布式训练中，经常遇到显存或者内存不足的情况，该问题通常由以下原因导致：
+
+- 输入过大（batch size过大或视频等较大的数据）
+- 中间层输出占据的显存超出了显存大小
+- 参数过大（如CPU的embedding）
+
+GradientMerge 策略的做法为：将大batch的输入切分成若干小batch，并对这些小batch分别进行 "前向+反向" 网络计算从而得到梯度。其间会有一部分显存/内存用于存放梯度，对每个小batch计算出的梯度进行叠加，在计算完所有小batch后用累加的梯度对模型进行更新。
+通过GradientMerge 策略，用户只需要定义大batch被分割的粒度便可以实现大batch训练的目的。
+
+### 应用样例
+
 

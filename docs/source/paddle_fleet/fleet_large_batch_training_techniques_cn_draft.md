@@ -38,7 +38,8 @@ fleet.init(role)
 
 ### 加载模型及数据
 
-用户可以通过`X.applications`接口加载我们预先定义好的模型，如：Resnet50、VGG16、BERT等。并使用定制化的data_loader加载模型，同时可以定义训练中使用的batch_size等参数。下面的例子中，我们使用了recompute对Bert_large模型所支持的最大batch_size -- 53
+用户可以通过`X.applications`接口加载我们预先定义好的模型，如：Resnet50、VGG16、BERT等。并使用定制化的data_loader加载模型，同时可以定义训练中使用的batch_size等参数。下面的例子中，我们使用了recompute对Bert_large模型所支持的最大batch_size。
+
 ```python
 model = X.applications.Bert_large()
 
@@ -50,7 +51,7 @@ data_loader = model.load_digital_dataset_from_file(
 )
 ```
 
-### 定义recompute strategy 以及 optimizer
+### 定义Recompute Strategy 及 Optimizer
 
 接下来我们就可以定义分布式训练中所应用到的策略了。Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络切分为k个部分（segments）。对每个segment而言：前向计算时，除了小部分必须存储在内存中的Variable外，其他中间结果都将被删除；在反向计算中，首先重新计算一遍前向算子，以获得中间结果，再运行反向算子。简而言之，FRB和普通的网络迭代相比，多计算了一遍前向算子。
 
@@ -82,7 +83,7 @@ exe.run(fluid.default_startup_program())
 total_time = 0
 for i, data in enumerate(data_loader()):
     start_time = time.time()
-    cost_val = exe.run(fluid.default_main_program(),
+    cost_val = exe.run(paddle.static.default_main_program(),
                        feed=data,
                        fetch_list=[model.loss.name])
     end_time = time.time()
@@ -110,14 +111,86 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 |speed|18.2 sents/s| 12.88 sents/s| 19.14 sents/s |
 
 
-
-
-
 ## Gradient Merge
 
-GradientMerge 策略的做法为：将大batch的输入切分成若干小batch，并对这些小batch分别进行 "前向+反向" 网络计算从而得到梯度。其间会有一部分显存/内存用于存放梯度，对每个小batch计算出的梯度进行叠加，在计算完所有小batch后用累加的梯度对模型进行更新。
+下面，我们介绍如何使用 Gradient Merge 来扩大BERT模型分布式训练中的 batch size（假设脚本名称为bert_gradient_merge.py）：
+
+与 Forward Recompute Backpropagation 相同，我们首先要添加依赖，定义分布式模式并加载模型及数据。
+
+### 添加依赖
+
+```python
+import os
+import time
+import paddle
+import fleetx as X
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+```
+
+### 定义分布式模式并初始化
+```python
+configs = X.parse_train_configs()
+role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+fleet.init(role)
+```
+
+### 加载模型及数据
+
+```python
+model = X.applications.Bert_large()
+
+data_loader = model.load_digital_dataset_from_file(
+    data_dir='./train_data',
+    vocab_path='./vocab.txt',
+    max_seq_len=512,
+    batch_size=13,
+)
+```
+
+
+### 定义Gradient Merge Strategy 及 Optimizer
+
+Gradient Merge 扩大 batch size 的方法为：将大batch的输入切分成若干小batch，并对这些小batch分别进行 “前向+反向” 网络计算从而得到梯度。其间会有一部分显存/内存用于存放梯度，对每个小batch计算出的梯度进行叠加，在计算完所有小batch后用累加的梯度对模型进行更新。
+
 通过GradientMerge 策略，用户只需要定义大batch被分割的粒度便可以实现大batch训练的目的。
 
-### 应用样例
+在下面的例子中，我们定义了分割粒度为13，并分4步完成一个大batch的训练，从而达到了batch size为52的训练。
+```python
+dist_strategy = fleet.DistributedStrategy()
+# 使用Gradient merge策略并设置相关参数
+dist_strategy.gradient_merge = True
+dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
+optimizer = fluid.optimizer.Adam(learning_rate=configs.lr)
+optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
+optimizer.minimize(model.loss)
+```
 
+### 开始训练
 
+Gradient Merge 的训练代码与 Recompute 策略相同：
+
+```python
+place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+exe = fluid.Executor(place)
+exe.run(fluid.default_startup_program())
+
+total_time = 0
+for i, data in enumerate(data_loader()):
+    start_time = time.time()
+    cost_val = exe.run(fluid.default_main_program(),
+                       feed=data,
+                       fetch_list=[model.loss.name])
+    end_time = time.time()
+    total_time += (end_time - start_time)
+    print(
+        "worker_index: %d, step%d cost = %f, total time cost = %f, step per second: %f, speed: %f"
+        % (fleet.worker_index(), i, cost_val[0], total_time,
+           (i - 9) / total_time, 1 / (end_time - start_time)))
+```
+
+### 运行训练脚本
+
+```sh
+fleetrun --gpus 0,1,2,3,4,5,6,7 bert_gradient_merge.py
+```

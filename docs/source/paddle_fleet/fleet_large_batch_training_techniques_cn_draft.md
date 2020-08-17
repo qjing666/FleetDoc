@@ -106,7 +106,7 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 - **Bert_large**: 
 
 |Model|Baseline|Recompute| Recompute + mixed precision|
-|:---:|:---:|:---:|:---:|
+|-----|-----|-----|-----|
 |batch size| 14 | 53 | 87 |
 |speed|18.2 sents/s| 12.88 sents/s| 19.14 sents/s |
 

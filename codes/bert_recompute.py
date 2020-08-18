@@ -1,6 +1,7 @@
 import os
 import time
 import paddle
+import paddle.fluid as fluid
 import fleetx as X
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
@@ -15,12 +16,12 @@ data_loader = model.load_digital_dataset_from_file(
     data_dir='./train_data',
     vocab_path='./vocab.txt',
     max_seq_len=512,
-    batch_size=53,
+    batch_size=50,
 )
 
 dist_strategy = fleet.DistributedStrategy()
+dist_strategy.amp = True
 dist_strategy.recompute = True
-#dist_strategy.amp = True
 dist_strategy.recompute_configs = {"checkpoints": model.checkpoints}
 optimizer = fluid.optimizer.Adam(learning_rate=configs.lr)
 optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)

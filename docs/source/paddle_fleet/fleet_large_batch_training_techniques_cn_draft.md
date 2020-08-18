@@ -3,7 +3,13 @@
 ## 简介 + strategy列表
 
 
-随着训练数据规模的逐渐增加，训练更大、更深的深度学习模型成为一个主流趋势。目前的深度学习模型训练，通常要求保留前向计算的隐层结果，并且需要保存结果的数量会随着模型层数的增加线性增加，这对于目前能够使用的AI芯片的内存大小是个挑战。Fleet中提供了两种扩大训练batch大小的策略：Forward Recomputation Backpropagation (FRB) 以及 Gradient Merge。下面我们将分别对这两个策略进行讲解，并会基于BERT模型提供使用样例。
+随着训练数据规模的逐渐增加，训练更大、更深的深度学习模型成为一个主流趋势。为了更高效地训练模型，分布式技术及定制化AI芯片被应用到大规模深度学习训练中。但在分布式训练中，经常会遇到显存或者内存不足的情况，通常是以下几点原因导致的：
+
+- 输入的数据过大：如视频类输入
+- 深度模型的参数过多或过大，所需的存储空间超出了内存/显存的大小
+- AI芯片的内存有限
+
+为了使训练能正常进行，我们通常只能使用较小的batch size以降低模型训练中的所需要的存储空间，但这也大大限制了模型训练的速度。Fleet中提供了两种扩大训练batch大小的策略：Forward Recomputation Backpropagation (FRB) 以及 Gradient Merge。下面我们将基于BERT模型的实用样例，分别对这两个策略进行讲解。
 
 在开始之前，我们需要准备训练数据及词表
 
@@ -55,7 +61,7 @@ data_loader = model.load_digital_dataset_from_file(
 
 接下来我们就可以定义分布式训练中所应用到的策略了。Forward Recomputation Backpropagation（FRB）的思想是将深度学习网络切分为k个部分（segments）。对每个segment而言：前向计算时，除了小部分必须存储在内存中的Variable外，其他中间结果都将被删除；在反向计算中，首先重新计算一遍前向算子，以获得中间结果，再运行反向算子。简而言之，FRB和普通的网络迭代相比，多计算了一遍前向算子。
 
-我们把切分网络的变量叫做checkpoints。那么该如何选择这些checkpoints呢？我们知道深度学习网络通常是由一个个模块串联得到的，比如ResNet-50由16个block串联而成， Bert-Large由24个transformer串联而成，以两个子模块中间的变量作为切分点就是一个很好的选择。 对于非串联的网络（比如含有大量shortcut结构的网络），FRB也支持对其做切分， 只是可能多耗费一点内存（用于存储shortcut的Variable）。同时我们也可以通过一些动态规划的算法，根据指定的内存自动搜索合适的checkpoints，来支持各种网络结构。
+我们把切分网络的变量叫做checkpoints。那么该如何选择这些checkpoints呢？我们知道深度学习网络通常是由一个个模块串联得到的，比如ResNet-50由16个block串联而成， Bert-Large由24个transformer串联而成，以两个子模块中间的变量作为切分点就是一个很好的选择。 对于非串联的网络（比如含有大量shortcut结构的网络），FRB也支持对其做切分， 只是可能多耗费一点内存（用于存储shortcut的Variable）。
 
 下面的例子中，为了使用Recompute策略，我们将`dist_strategy.recompute`设置为True 并设置我们事先定义好的checkpoints。
 

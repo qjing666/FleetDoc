@@ -54,13 +54,12 @@ LARS 优化算法的公式如下:
     * FleetX 中还提供 lars_weight_decay 过滤策略, 可以通过在`exclude_from_weight_decay` 参数加入对应layer 的 name string, 让这一 layer 的参数不进行 lars weight decay. (通常我们将 BN参数 和 FC_bias 从lars weight decay 中过滤)
 
 '''python
-# 定义fleet 分布式策略
 configs = X.parse_train_configs()
 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 dist_strategy = fleet.DistributedStrategy()
 
-# LARS 相关策略
+
 dist_strategy.lars = True
 dist_strategy.lars_configs = {
                     "lars_coeff": 0.001,

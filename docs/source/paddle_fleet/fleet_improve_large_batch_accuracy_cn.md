@@ -1,22 +1,22 @@
 # 使用LARS / LAMB 加速分布式超大batch 训练
 
 ## 简介 
-在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此当GPU 数量增加时, 训练的全局batch size 也会变大. 但越大的全batch size 训练的收敛问题[1](https://arxiv.org/abs/1404.5997)[2](https://arxiv.org/abs/1609.04836):
+在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此当GPU 数量增加时, 训练的全局batch size 也会变大. 但越大的全batch size 训练的收敛问题[[1]](https://arxiv.org/abs/1404.5997)  [[2]](https://arxiv.org/abs/1609.04836):
  * 模型最终精度损失
  * 收敛速度变慢, 需要更多的epoch 才能收敛 
 
-LARS[3](https://arxiv.org/abs/1708.03888) 和 LAMB[4](https://arxiv.org/abs/1904.00962) 两个优化策略常用来解决上述超大batch 训练中的收敛问题. FleetX 实现了这两种优化策略, 并提供简单易用API 接口. 通过这两个优化策略, 我们在超大batch 场景中实现了更快的收敛速度和无损的精度, 结合FleetX 中其他的策略(AMP (LINK to amp)) 极大缩短的训练整体的time2train. 中下文将通过一个简单例子介绍如何在Fleet 数据并行训练框架中使用 LARS 和LAMB, 另外给出我们使用 FleetX 实践的效果和代码.
+LARS[[3]](https://arxiv.org/abs/1708.03888) 和 LAMB[[4]](https://arxiv.org/abs/1904.00962) 两个优化策略常用来解决上述超大batch 训练中的收敛问题. FleetX 实现了这两种优化策略, 并提供简单易用API 接口. 通过这两个优化策略, 我们在超大batch 场景中实现了更快的收敛速度和无损的精度, 结合FleetX 中其他的策略(AMP (LINK to amp)) 极大缩短的训练整体的time2train. 中下文将通过一个简单例子介绍如何在Fleet 数据并行训练框架中使用 LARS 和LAMB, 另外给出我们使用 FleetX 实践的效果和代码.
 
 ## Fleet 效果
 - **Bert_large**: 
 
 |     |Global batch size|epoch| top1 |
 |:---:|:---:|:---:|:---:|
-|Goyal et al (https://arxiv.org/abs/1706.02677)| 8k | 90 | 76.3% |
-|LARS (https://arxiv.org/abs/1708.03888)| 32k | 90 | 72.3% |
-|lars + amp(LINK to example code) |16k | 60 | 75.9%|
-|lars + amp(LINK to example code) |32k | TBA | TBA |
-|lars + amp(LINK to example code) |64k | TBA | TBA |
+|[Goyal et al](https://arxiv.org/abs/1706.02677)| 8k | 90 | 76.3% |
+|[LARS](https://arxiv.org/abs/1708.03888)| 32k | 90 | 72.3% |
+|[lars + amp](https://LINK_to_example_code) |16k | 60 | 75.9%|
+|[lars + amp](https://LINK_to_example_code) |32k | TBA | TBA |
+|[lars + amp](https://LINK_to_example_code) |64k | TBA | TBA |
 
 
 ## LARS 
@@ -53,7 +53,7 @@ LARS 优化算法的公式如下:
     * LARS 已经将 weight decay 包含进公式中, 用户不需要再另外设置 weight decay.
     * FleetX 中还提供 lars_weight_decay 过滤策略, 可以通过在`exclude_from_weight_decay` 参数加入对应layer 的 name string, 让这一 layer 的参数不进行 lars weight decay. (通常我们将 BN参数 和 FC_bias 从lars weight decay 中过滤)
 
-'''python
+```python
 configs = X.parse_train_configs()
 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
@@ -70,7 +70,7 @@ dist_strategy.lars_configs = {
 optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
-'''
+```
 
 
 #### 开始训练

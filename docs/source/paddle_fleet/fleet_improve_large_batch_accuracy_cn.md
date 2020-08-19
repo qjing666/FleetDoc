@@ -8,15 +8,13 @@
 LARS[[3]](https://arxiv.org/abs/1708.03888) 和 LAMB[[4]](https://arxiv.org/abs/1904.00962) 两个优化策略常用来解决上述超大batch 训练中的收敛问题. FleetX 实现了这两种优化策略, 并提供简单易用API 接口. 通过这两个优化策略, 我们在超大batch 场景中实现了更快的收敛速度和无损的精度, 结合FleetX 中其他的策略(AMP (LINK to amp)) 极大缩短的训练整体的time2train. 中下文将通过一个简单例子介绍如何在Fleet 数据并行训练框架中使用 LARS 和LAMB, 另外给出我们使用 FleetX 实践的效果和代码.
 
 ## Fleet 效果
-- **Bert_large**: 
-
 |     |Global batch size|epoch| top1 |
 |:---:|:---:|:---:|:---:|
 |[Goyal et al](https://arxiv.org/abs/1706.02677)| 8k | 90 | 76.3% |
 |[LARS](https://arxiv.org/abs/1708.03888)| 32k | 90 | 72.3% |
-|[lars + amp](https://LINK_to_example_code) |16k | 60 | 75.9%|
-|[lars + amp](https://LINK_to_example_code) |32k | TBA | TBA |
-|[lars + amp](https://LINK_to_example_code) |64k | TBA | TBA |
+|[FleetX lars + amp](https://LINK_to_example_code) |16k | 60 | 75.9%|
+|[FleetX lars + amp](https://LINK_to_example_code) |32k | TBA | TBA |
+|[FleetX lars + amp](https://LINK_to_example_code) |64k | TBA | TBA |
 
 
 ## LARS 
@@ -39,12 +37,11 @@ loader = model.load_imagenet_from_file("/pathto/ImageNet/train.txt")
 #### 定义分布式 和LARS 相关策略
 LARS 优化算法的公式如下:
 
-.. math::
 
-  & local\_learning\_rate = learning\_rate * lars\_coeff * \
-  \frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}\\
-  & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)\\
-  & param = param - velocity
+& local\_learning\_rate = learning\_rate * lars\_coeff * \
+\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}\\
+& velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)\\
+& param = param - velocity
 
 可以看到LARS 其实是在 带`weight decay` 的`momentum` 优化器的基础上加入了`local learning rate` 的逻辑, 对每一层的`learning rate` 进行了放缩. FleetX 将 LARS实现为一个 fleet meta optimizer, 在使用时需要注意一下几点:
 1. LARS meta optimizer 的 inner optimizer 必须为 `momentum`, 并在 momentum 中定义 `mu` 和`lr` 参数.

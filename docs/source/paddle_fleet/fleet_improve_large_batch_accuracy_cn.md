@@ -22,7 +22,8 @@ LARS[[3]](https://arxiv.org/abs/1708.03888) 和 LAMB[[4]](https://arxiv.org/abs/
 
 #### 构建模型
 首先我们要导入依赖和定义模型和 data loader, 这一步和FleetX 下其他任务基本一致.
-```python
+
+.. code-block:: python
 import os
 import fleetx as X
 import paddle.fluid as fluid
@@ -32,47 +33,49 @@ import paddle.distributed.fleet as fleet
 
 model = X.applications.Resnet50()
 loader = model.load_imagenet_from_file("/pathto/ImageNet/train.txt")
-```
+..
 
 #### 定义分布式 和LARS 相关策略
 LARS 优化算法的公式如下:
 
-
-& local\_learning\_rate = learning\_rate * lars\_coeff * \
-\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}\\
-& velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)\\
-& param = param - velocity
+.. math::
+    & local\_learning\_rate = learning\_rate * lars\_coeff * \
+    \frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}\\
+    & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)\\
+    & param = param - velocity
+..
 
 可以看到LARS 其实是在 带`weight decay` 的`momentum` 优化器的基础上加入了`local learning rate` 的逻辑, 对每一层的`learning rate` 进行了放缩. FleetX 将 LARS实现为一个 fleet meta optimizer, 在使用时需要注意一下几点:
 1. LARS meta optimizer 的 inner optimizer 必须为 `momentum`, 并在 momentum 中定义 `mu` 和`lr` 参数.
 2. 在 fleet dist_strategy 定义LARS 特有的 `lars_coeff` 参数和 `lars_weight_decay` 参数.
 3. Weight Decay
-    * LARS 已经将 weight decay 包含进公式中, 用户不需要再另外设置 weight decay.
-    * FleetX 中还提供 lars_weight_decay 过滤策略, 可以通过在`exclude_from_weight_decay` 参数加入对应layer 的 name string, 让这一 layer 的参数不进行 lars weight decay. (通常我们将 BN参数 和 FC_bias 从lars weight decay 中过滤)
+    * LARS 已经将 `weight decay` 包含进公式中, 用户不需要再另外设置 `weight decay`.
+    * FleetX 中还提供 lars_weight_decay 过滤策略, 可以通过在`exclude_from_weight_decay` 参数加入对应layer 的 `name string`, 让这一 layer 的参数不进行 lars weight decay. (通常我们将`BN` 参数 和 `FC_bias` 从lars weight decay 中过滤)
 
-```python
-configs = X.parse_train_configs()
-role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-fleet.init(role)
-dist_strategy = fleet.DistributedStrategy()
+.. code-block:: python
+    # FleetX 
+    configs = X.parse_train_configs()
+    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+    fleet.init(role)
+    dist_strategy = fleet.DistributedStrategy()
 
+    # 
+    dist_strategy.lars = True
+    dist_strategy.lars_configs = {
+                        "lars_coeff": 0.001,
+                        "lars_weight_decay": 0.0005,
+                        "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                    }
 
-dist_strategy.lars = True
-dist_strategy.lars_configs = {
-                    "lars_coeff": 0.001,
-                    "lars_weight_decay": 0.0005,
-                    "exclude_from_weight_decay": ['batch_norm', '.b_0']
-                }
-
-optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
-optimizer.minimize(model.loss)
-```
-
+    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+    optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
+    optimizer.minimize(model.loss)
+..
 
 #### 开始训练
 这一部分和FleetX 中其他任务基本相同:
-```python
+
+.. code-block:: python
 place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
 exe = fluid.Executor(place)
 exe.run(fluid.default_startup_program())
@@ -89,4 +92,4 @@ for i, data in enumerate(data_loader()):
         "worker_index: %d, step%d cost = %f, total time cost = %f, step per second: %f, speed: %f"
         % (fleet.worker_index(), i, cost_val[0], total_time,
            (i - 9) / total_time, 1 / (end_time - start_time))
-```
+..

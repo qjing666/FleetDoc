@@ -1,7 +1,9 @@
 # 使用LARS / LAMB 优化分布式超大batch 训练
 
 ## 简介 
-在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此当GPU 数量增加时, 训练的全局batch size 也会变大. 但越大的全batch size 训练的收敛问题[[1]](https://arxiv.org/abs/1404.5997)  [[2]](https://arxiv.org/abs/1609.04836):
+在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此在增加GPU 数量同时, 训练的全局batch size 也会变大. 
+
+但越大的全局batch size 会带来训练的收敛问题[[1]](https://arxiv.org/abs/1404.5997)  [[2]](https://arxiv.org/abs/1609.04836):
 
  * 模型最终精度损失
  * 收敛速度变慢, 需要更多的epoch 才能收敛 

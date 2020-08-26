@@ -1,61 +1,76 @@
 # 自动混合精度练加速分布式训练
 
 ## 简介
-在使用数据并行分布的同时, 我们还可以引入自动混合精度(Auto Mixed Precision) 来进一步加速训练的速度.
+在使用数据并行分布式训练的同时, 我们还可以引入自动混合精度(Auto Mixed Precision) 来进一步提升训练的速度.
 
-主流的神经网络模型通常使用单精度 `single-precision` `(FP32)` 数据格式来存储模型参数, 进行训练和预测, 在上述环节中使用半精度 `half-precision` `(FP16)`来代替单精度, 可以带来以下好处:
+主流的神经网络模型通常使用单精度 `single-precision` `(FP32)` 数据格式来存储模型参数、进行训练和预测.
+在上述环节中使用半精度 `half-precision` `(FP16)`来代替单精度. 可以带来以下好处:
 
-1. 减少对memory 空间的需求: 
+1. 减少对GPU memory 的需求: 
     * 降低显存读写时的带宽压力
-    * GPU 显存不变情况下支持更大模型 / batch size
-2. 加速GPU 数学运算速度 (需要GPU 支持半精度*)
-    * GPU上 FP16 吞吐是FP32 的 2 - 8 倍[[1]](https://arxiv.org/abs/1710.03740)
+    * GPU 显存不变情况下, 支持更大模型 / batch size
+2. 加速GPU 数学运算速度 (需要GPU 支持[[1]](https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html#tensorop))
+    * GPU上 FP16 吞吐是FP32 的 2 - 8 倍[[2]](https://arxiv.org/abs/1710.03740)
 
-FleetX 支持自动混合精度计算, 并实现了 `FP32 参数副本及更新`,  `Dynamic loss scaling`,  `op黑白名单` 等功能来避免FP16 因动态范围较小而可能带来的模型最终精度损失. FleetX 并提供了简单易用的API 接口, 用户无须修改参数. 就可将自动混合精度应用到原有的分布式训练中进一步提升训练速度.
+FleetX 支持自动混合精度计算, 并实现了 `FP32 参数副本及更新`,  `Dynamic loss scaling`,  `op黑白名单` 等功能来避免FP16 因动态范围较小而可能带来的模型最终精度损失. 
+FleetX 并提供了简单易用的API 接口, 用户无须修改参数. 就可将自动混合精度应用到原有的分布式训练中进一步提升训练速度.
 
-中下文将通过一个简单例子介绍如如何通过 FleetX将实现混合精度的分布式训练, 另外给出我们我们使用 FleetX 进行同步训练加速的实践.
+中下文将通过一个简单例子介绍如如何通过 FleetX将实现混合精度的分布式训练, 另外给出我们使用 FleetX 进行同步训练加速的实践.
 
 
 ## FleetX 效果
-4 机 32卡 V100-32GB
+环境: 4 机 32卡 V100-32GB
 
-| imagenet | 单卡 batch size | 全局 batch size | 速度 | top1 |
-|:---:|:---:|:---:|:---:|:---:|
-|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
-|[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
-|[Resnet50-FP32](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[Resnet50-AMP](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[Resnet50-FP32](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
-|[Resnet50-AMP](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
-|[Bert-FP32](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[Bert-AMP](https://arxiv.org/abs/1708.03888)| 128 | 90 | TBA |  76.3% |
-|[Bert-FP32](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
-|[Bert-AMP](https://arxiv.org/abs/1708.03888)| 256 | 90 | TBA |  76.3% |
+| imagenet | 单卡 batch size | 速度 img/s | top1 |
+|:---:|:---:|:---:|:---:|
+|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
+|[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
+|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 256 | OOM |  OOM|
+|[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 256 | TBA |  76.3% |
+
+| imagenet | 单卡 batch size | 速度 img/s | top1 |
+|:---:|:---:|:---:|:---:|
+|[Resnet50-FP32](https://arxiv.org/abs/1708.03888)| 128 | 8410 |  TBA |
+|[Resnet50-AMP](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
+|[Resnet50-FP32](https://arxiv.org/abs/1708.03888)| 256 | OOM |  OOM |
+|[Resnet50-AMP](https://arxiv.org/abs/1708.03888)| 256 | 29440 |  76.3% |
+
+| EN-DE | 单卡 batch size | 速度 img/s | top1 |
+|:---:|:---:|:---:|:---:|
+|[Bert-FP32](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
+|[Bert-AMP](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
+|[Bert-FP32](https://arxiv.org/abs/1708.03888)| 256 | TBA |  76.3% |
+|[Bert-AMP](https://arxiv.org/abs/1708.03888)| 256 | TBA |  76.3% |
 
 ## AMP 快速开始
-这里以在单机多卡上Resent50 训练为简单例子介绍FleetX 中 AMP的用法.
+这里以在单机多卡上训练Resent50 为简单例子介绍FleetX 中 AMP的用法.
 #### AMP 简述
 
 ##### FP32 参数副本及更新
 
-<img src='./img/AMP_1.png' width = "1000" height = "584" align="middle" description="xxxxxxxxxx" />
+<img src='./img/AMP_1.png' width = "952" height = "483" align="middle" description="xxxxxxxxxx" />
 
-如上图所示, 在AMP 中, 模型参数 `weight` , 前向中间结果`activation`, 反向`gradient` 都以FP16 形式存储, 由此可以少显存所需空间和读写所需带宽. 
-Paddle框架会为每一个`weight` 维护一个FP32副本, 用于参数更新. 上述点数据格式转换由框架自动完成, 用户无须操心. 
+如上图所示, 在AMP 中, 模型参数 `weight` , 前向中间的结果`activation`, 反向的`gradient` 都以FP16 形式存储, 由此可以少显存所需空间和读写所需带宽. 
+Paddle框架会为每一个`weight` 维护一个FP32副本, 用于参数更新. 上述点数据格式转换由 FleetX 框架自动完成, 用户无须操心. 
 
 ##### Loss scaling
-<img src='./img/AMP_2.png' width = "1000" height = "584" align="middle" description="xxxxxxxxxx" />
+<img src='./img/AMP_2.png' width = "973" height = "613" align="middle" description="xxxxxxxxxx" />
 
-如上图所示, 实际情况中模型训练中的某些变量, 比如`grad` (特别是 `activation` 的 `grad`), 可能会小于 FP16 所能表示的最小值而变成`0`; 另一方面在FP16 的表示范围的中有很大的一部分(从最大值往左) 却没有被利用到.
+如上图所示, 实际情况中模型训练中的某些变量, 比如`grad` (特别是 `activation` 的 `grad`), 可能会因小于 FP16 所能表示的最小值而变成`0`; 
+
+另一方面在FP16 的表示范围的中有很大的一部分(从最大值往左) 却没有被利用到.
+
 对gradient 做一个整体的放大, 能够更充分的利用FP16 的表示范围. 
-FleetX AMP 会在反向开始前对 loss 进行 up scaling, 并在任何 gradient-related 操作(gradient-clip, update) 之前对 gredient 进行  down scaling 恢复原来的大小. (需要注意: 在分布式并行计算中, gradient-down-scaling 是在 gradient-allreduce 聚合之后才进行, allreduce 中使用的 FP16 upscaled gradient.)
+
+FleetX AMP 会在反向开始前对 loss 进行 up scaling, 并在执行任何 gradient-related 操作(e.g. gradient-clip, update) 之前对 gredient 进行  down scaling 恢复原来的大小. (需要注意: 在分布式并行计算中, gradient-down-scaling 是在 gradient-allreduce 聚合之后才进行, allreduce 中使用的 FP16 upscaled gradient.)
 
 `scaling factor` 的设置是 Lossing scaling 的关键, FleetX AMP 提供 `Dynamic loss scaling` 和 `Constant loss scaling` 两种scaling 策略:
 
 * Constant loss scaling: 设置 `use_dynamic_loss_scaling = False` 和 `init_loss_scaling (float)`
-* Dynamic loss scaling: scaling 中面临的问题是当`scaling up 不足`时, 仍会有部分较小变量会被表示成 0而损失精度; 当`scaling up 过度`时, 变量超过FP16表示范围出现 nan or inf, 同样造成精度损失. 此策略采用自动 gradient 值检测的方式: 当连续`incr_every_n_steps(int)`个batch 中所有的gradient 都在FP16 的表示范围, 将scaling factor 增大`incr_ratio(float)`倍; 当有连续`decr_every_n_nan_or_inf(int)`个batch 中gradient 里出现 nan / inf时, scaling factor 缩小 `decr_ratio(float)`倍. 上述四个参数FleetX 提供的默认值可以满足绝大部分要求, 用户通常不需要修改.
+* Dynamic loss scaling: scaling 中面临的问题是当`scaling up 不足`时, 仍会有部分较小变量会被表示成 0而损失精度; 当`scaling up 过度`时, 变量超过FP16表示范围出现 nan or inf, 同样造成精度损失.  此策略采用自动 gradient 值检测的方式: 
+    * 当连续`incr_every_n_steps(int)`个batch 中所有的gradient 都在FP16 的表示范围, 将scaling factor 增大`incr_ratio(float)`倍; 
+    * 当有连续`decr_every_n_nan_or_inf(int)`个batch 中gradient 里出现 nan / inf时, scaling factor 缩小 `decr_ratio(float)`倍. 
+    * 上述四个参数FleetX 提供的默认值可以满足绝大部分要求, 用户通常不需要修改.
 
 
 ##### OP 黑白名单
@@ -151,3 +166,4 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 resnet50_amp.py
 
 * [Mixed Precision Training](https://arxiv.org/abs/1710.03740)
 * [MIXED PRECISION TRAINING: THEORY AND PRACTICE](https://on-demand.gputechconf.com/gtc/2018/presentation/s8923-training-neural-networks-with-mixed-precision-theory-and-practice.pdf)
+* [Training With Mixed Precision](https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html#tensorop)

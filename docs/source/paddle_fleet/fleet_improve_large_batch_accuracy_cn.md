@@ -1,7 +1,9 @@
 # 使用LARS / LAMB 优化分布式超大batch 训练
 
 ## 简介 
-在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此当GPU 数量增加时, 训练的全局batch size 也会变大. 但越大的全batch size 训练的收敛问题[[1]](https://arxiv.org/abs/1404.5997)  [[2]](https://arxiv.org/abs/1609.04836):
+在数据并行分布式训练场景中, 常使用增加GPU数量的方式来加速训练. 为了保证GPU的算力得到充分利用, 每张GPU卡上的batch size都需要足够大. 因此在增加GPU 数量同时, 训练的全局batch size 也会变大. 
+
+但越大的全局batch size 会带来训练的收敛问题[[1]](https://arxiv.org/abs/1404.5997)  [[2]](https://arxiv.org/abs/1609.04836):
 
  * 模型最终精度损失
  * 收敛速度变慢, 需要更多的epoch 才能收敛 
@@ -51,7 +53,9 @@ LARS 优化算法的公式如下:
 .. math::
     & local\_learning\_rate = learning\_rate * lars\_coeff * \\
         \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
+
     & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+
     & param = param - velocity
 
 可以看到LARS 其实是在 带`weight decay` 的`momentum` 优化器的基础上加入了`local learning rate` 的逻辑, 对每一层的`learning rate` 进行了放缩. 
@@ -138,8 +142,11 @@ LAMB 优化算法的公式如下:
 
 ..  math::
     m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t 
+
     v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
+
     r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
+    
     w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
 在公式中 `m` 是一阶 moment, 而`v` 是二阶moment, `\eta` 和 `\lambda` 分别是 LAMB `learning rate`  和 `weight decay rate`.

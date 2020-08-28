@@ -68,7 +68,7 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 ```
 
-### 定义分布式模式并初始化
+#### 定义分布式模式并初始化
 
 通过`X.parse_train_configs()`接口，用户可以定义训练相关的参数，如：学习率、衰减率等。同时通过`fleet.init()`接口定义了分布式模型，下面代码中的`is_collective=True`表示采用集合通信的GPU分布式模式训练模型。
 ```python
@@ -77,7 +77,7 @@ role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 ```
 
-### 加载模型及数据
+#### 加载模型及数据
 
 用户可以通过`X.applications`接口加载我们预先定义好的模型，如：Resnet50、VGG16、BERT等。并使用定制化的data_loader加载模型，同时可以定义训练中使用的batch_size等参数。下面的例子中，我们使用了recompute对Bert_large模型所支持的最大Batch Size（53）来进行训练。
 
@@ -92,7 +92,7 @@ data_loader = model.load_digital_dataset_from_file(
 )
 ```
 
-### 定义Recompute Strategy 及 Optimizer
+#### 定义Recompute Strategy 及 Optimizer
 
 接下来我们就可以定义分布式训练中所应用到的策略了。下面的例子中，为了使用Recompute策略，我们将`dist_strategy.recompute`设置为True 并设置我们事先定义好的checkpoints。
 
@@ -111,7 +111,7 @@ optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 ```
 
-### 开始训练
+#### 开始训练
 
 在 FleetX 中，我们为用户提供了`X.MultiGPUTrainer` 接口，用于GPU分布式训练。其中`model` 及 `data_loader` 分别为第二步中加载的模型及数据。`start_step` 表示开始打印训练log的步数，若用户想复现我们的模型训练速度数据建议设置成10或者更大的数；若用户想查看模型的收敛情况，则可设置成0。
 ```python
@@ -125,7 +125,7 @@ trainer.fit(model, data_loader, start_step=10)
 fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 ```
 
-### 效果测试
+#### 效果测试
 
 我们在BERT模型上对recompute的效果进行了测试，使用Recompute后Batch size可以扩大至3倍。与混合精度一起使用时，Batch_size可以进一步扩大。
 
@@ -137,13 +137,13 @@ fleetrun --gpus 0,1,2,3,4,5,6,7 bert_recompute.py
 |speed|18.2 sents/s| 12.88 sents/s| 19.14 sents/s |
 
 
-## Gradient Merge
+### Gradient Merge
 
 下面，我们介绍如何使用 Gradient Merge 来扩大BERT模型分布式训练中的 Batch Size（假设脚本名称为bert_gradient_merge.py）：
 
 与 Forward Recompute Backpropagation 相同，我们首先要添加依赖，定义分布式模式并加载模型及数据。
 
-### 添加依赖
+#### 添加依赖
 
 ```python
 import fleetx as X
@@ -152,14 +152,14 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 ```
 
-### 定义分布式模式并初始化
+#### 定义分布式模式并初始化
 ```python
 configs = X.parse_train_configs()
 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 ```
 
-### 加载模型及数据
+#### 加载模型及数据
 
 ```python
 model = X.applications.Bert_large()
@@ -173,7 +173,7 @@ data_loader = model.load_digital_dataset_from_file(
 ```
 
 
-### 定义Gradient Merge Strategy 及 Optimizer
+#### 定义Gradient Merge Strategy 及 Optimizer
 
 在上面的代码中，我们定义了Batch Size为13，在这一步中，我们将设置使用4个Batch Size来模拟一个大Batch的训练，从而达到了Batch size为52的训练效果。
 
@@ -189,7 +189,7 @@ optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 ```
 
-### 开始训练
+#### 开始训练
 
 Gradient Merge 的训练代码与 Recompute 策略相同，用户使用两行代码即可开始训练：
 
@@ -198,7 +198,7 @@ trainer = X.MultiGPUTrainer()
 trainer.fit(model, data_loader, start_step=10)
 ```
 
-### 运行训练脚本
+#### 运行训练脚本
 
 ```sh
 fleetrun --gpus 0,1,2,3,4,5,6,7 bert_gradient_merge.py

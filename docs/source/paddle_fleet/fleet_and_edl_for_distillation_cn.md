@@ -95,6 +95,6 @@ python -m paddle.distributed.launch --selected_gpus 0 \
   --distill_teachers=127.0.0.1:9898
 ```
 
-
 ## 推荐阅读:
+[EDL服务型弹性蒸馏Github](https://github.com/elasticdeeplearning/edl)
 [飞桨知识蒸馏](https://paddleclas.readthedocs.io/zh_CN/latest/advanced_tutorials/distillation/index.html)

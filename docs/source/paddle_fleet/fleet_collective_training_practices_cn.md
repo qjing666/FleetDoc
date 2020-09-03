@@ -1,15 +1,17 @@
 # 数据并行同步训练实践
 
 ## 同步训练简介
-许多研究表明深度学习的预训练受益于更多的数据[[1]](https://arxiv.org/abs/1311.2901) [[2]](https://arxiv.org/abs/1409.1556) [[3]](https://arxiv.org/abs/1312.6229)，但更大的数据量也意味着更长的训练耗时，数据并行同步训练是一种加速大规模数据训练的方法，有PServer和Collective两种模式。同步训练通过数据划分，将计算工作量（前向、反向）分布到GPU 集群中的每一个worker上， 提高整体计算吞吐。但参数更新(update) 的过程在两种模式中有所不同：
+许多研究表明深度学习的预训练受益于更多的数据[[1]](https://arxiv.org/abs/1311.2901) [[2]](https://arxiv.org/abs/1409.1556) [[3]](https://arxiv.org/abs/1312.6229)，但更大的数据量也意味着更长的训练耗时，数据并行同步训练是一种加速大规模数据训练的方法，有**PServer**和**Collective**两种模式。
 
-* 在`PServer模式`中，会启动多个pservers 和多个trainers，每个pserver会保存一部分模型参数，并负责接收从trainer发送的梯度并更新这些模型参数；每个trainer 会保存一份完整的模型，并使用一部分数据进行训练，然后向pserver发送梯度，最后从pserver拉取更新后的参数。 pserver进程可以在和trainer完全不同的计算节点上，也可以和trainer公用节点。一个分布式任务所需要的pserver进程个数通常需要根据实际情况调整，以达到最佳的性能，然而通常来说pserver的进程不会比trainer更多。
+同步训练通过数据划分，将计算工作量（前向、反向）分布到GPU 集群中的每一个worker上， 提高整体计算吞吐。但参数更新(update) 的过程在两种模式中有所不同：
+
+* 在`PServer模式`中，会启动多个pservers 和多个trainers，每个pserver会保存一部分模型参数，并负责接收从trainer发送的梯度并更新这些模型参数；每个trainer 会保存一份完整的模型，并使用一部分数据进行训练，然后向pserver发送梯度，最后从pserver拉取更新后的参数。 pserver进程和trainer可以在不同的计算节点上，也可以在同一公用节点。一个分布式任务所需要的pserver进程个数通常需要根据实际情况调整，以达到最佳的性能，然而通常来说pserver的进程不会比trainer更多。
 
 <p align="center">
 <img src="https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/_images/dist_train_pserver.png" />
 </p>
 
-* 在`Collective模式`中，集群中只存在多个地位平等的trainers。 每个trainer进程都保存一份完整的模型参数使, 用自己划分的数据进行前向和反向，得到对应的梯度； 在完成计算梯度之后通过trainers 之间通过 allreduce 等 Collective 通信方式[[4]](https://mpitutorial.com/tutorials/mpi-reduce-and-allreduce/) 同步梯度到所有trainers，最后每个trainer 自完成参数更新。 
+* 在`Collective模式`中，集群中只存在多个地位平等的trainers。 每个trainer进程都保存一份完整的模型参数。 前向和反向中每个 trainer 使用自己划分 (shard）的数据进行计算，得到对应的梯度；之后trainers 之间通过 allreduce 等 Collective 通信方式[[4]](https://mpitutorial.com/tutorials/mpi-reduce-and-allreduce/) 同步梯度到所有trainers，最后每个 trainer 使用同步后的梯度独立完成参数更新。 
 
 <p align="center">
 <img src="https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/_images/dist_train_nccl2.png" />
@@ -21,16 +23,27 @@ Fleet中 PServer模式使用 gRPC 通信，Collective模式使用 NCCL2 通信�
 
 ## Fleet Collective 同步训练优化
 
-Fleet 可以支持在 GPU (CUDA 版本 >= 7.5) 服务器集群上完成高性能分布式训练。 在训练件脚本中，用户可以设置许多训练性能策略相关参数。目前Fleet 为这些参数提供了一个较通用默认值，用户可以不去调整。但如果用户希望追针对性调优分布式训练的性能，可以根据自身硬件和任务设置对应参数。 在进行性能优化时， 检查每项优化点并验证对应提升，最终获得最优性能。 一个简单的验证当前的训练程序是否需要进一步优化性能的方法， 是查看GPU的计算利用率，通常用 :code:`nvidia-smi`命令查看。 如果GPU利用率较低，则可能存在较大的优化空间。
+Fleet 支持在 GPU (CUDA 版本 >= 7.5) 服务器集群上完成高性能分布式训练。 用户可以通过`环境变量`和`fleet.DistributedStrategy` 设置许多与训练性能策略相关参数。目前Fleet 为这些参数提供了一个较通用默认值，用户可以不去调整。但如果用户希望针对性调优分布式训练的性能，可以根据自身硬件和任务设置对应参数。 
 
-这里介绍其中对性能影响较大，设置频率比较高的几个参数，详细的参数列表放在文末的附录中。
+在进行性能优化时， 检查每项优化点并验证对应提升，最终获得最优性能。 一个简单的验证当前的训练程序是否需要进一步优化性能的方法， 是查看GPU的计算利用率，通常用 :code:`nvidia-smi`命令查看。 如果GPU利用率较低，则可能存在较大的优化空间。
+
+下文对性能影响较大，设置频率比较高的几个参数，详细的参数列表放在文末的附录中。
 
 注意： 使用NCCL2模式分布式训练时，需要确保每个节点训练等量的数据，防止在最后一轮训练中任务不退出。通常有两种方式：
+
 * 随机采样一些数据，补全分配到较少数据的节点上。（推荐使用这种方法，以训练完整的数据集）。
 * 在python代码中，每个节点每个pass只训练固定的batch数，如果这个节点数据较多，则不训练这些多出来的数据。
 
 ### OP融合
-将模型网络中顺序执行的多个OPs进行融合能够减少OP 调度的开销，提升训练速度。目前Fleet 中支持如下3种的OP 融合（具体融合策略的含义在文末附录中）。
+将模型网络中顺序执行的多个OPs进行融合能够减少OP 调度的开销，提升训练速度。目前Fleet 中支持如下3种的OP 融合：
+
+* `fuse_all_optimizer_ops`：表明是否融合(fuse) 是否融合 optimizer_op，仅对部分 optimizer 可用（SGD、Adam和Momentum）。
+* `fuse_elewise_add_act_ops`：表明是否融合(fuse) elementwise_add_op和activation_op。
+* `fuse_bn_act_ops`：表明是否融合(fuse) batch_norm_op 和 activation_op。
+
+通常使用这些策略都会使整体执行过程更快。
+
+
 ```python
 dist_strategy = fleet.DistributedStrategy()
 dist_strategy.fuse_all_optimizer_ops = True
@@ -39,11 +52,12 @@ dist_strategy.fuse_elewise_add_act_ops = True
 ```
 
 ### AllReduce融合 
-开启AllReduce融合后，默认情况下会将同一layer中参数的梯度的AllReduce操作合并成一个，比如对于 fluid.layers.fc 中有Weight和Bias两个参数，打开该选项之后，原本需要两次AllReduce操作，现在只用一次AllReduce 操作。
-此外，为支持更大粒度的参数梯度融合，Fleet 提供了一下两个变量选项：
+AllReduce 融合默认情况下会将同一layer中参数的梯度的多个AllReduce操作合并成一个。 比如对于 fluid.layers.fc 中有Weight和Bias两个参数，打开该选项之前，需要两次AllReduce操作；打开该选项之后，只用一次AllReduce 操作。这样可以减少梯度同步时的通信耗时。
 
-* `FLAGS_fuse_parameter_memory_size`: 指定每个AllReduce操作的梯度字节数，比如该参数等于16 则每次AllReduce调用传输16MB的梯度。 该参数的经验值为总通信量的十分之一。
-* `FLAGS_fuse_parameter_groups_size`: 可以指定每次AllReduce操作的最大层数，即到达该层数就进行AllReduce，比如该参数等于50指最多每50层做一次 fused AllReduce。
+此外，为支持更大粒度的参数梯度融合，Fleet 提供了以下两个选项，用户可以在训练程序运行前在环境变量中设置：
+
+* `FLAGS_fuse_parameter_memory_size`: 指定每个AllReduce操作的梯度字节数，如该参数等于16 则每次AllReduce调用传输16MB的梯度。 该参数的经验值为总通信量的十分之一。
+* `FLAGS_fuse_parameter_groups_size`: 指定每次AllReduce操作的最大层数，即到达该层数就进行AllReduce。如该参数等于50, 则最多每50层做一次 fused AllReduce。
 
 注意： AllReduce融合目前不支持sparse参数梯度。
 ```shell
@@ -57,7 +71,7 @@ dist_strategy.fuse_all_reduce_ops=True
 ```
 
 ### 分层 AllReduce
-对于多机模式，针对小数据量的通信，Ring AllReduce通信效率低，采用Hierarchical AllReduce可以缓解这一问题。
+对于多机模式，针对小数据量的通信，Ring AllReduce通信效率低，采用Hierarchical AllReduce可以缓解这一问题。 
 ```python
 dist_strategy = fleet.DistributedStrategy()
 dist_strategy.use_hierarchical_allreduce = True
@@ -65,7 +79,7 @@ dist_strategy.hierarchical_allreduce_inter_nranks = 8
 ```
 
 ### 选择通信模式和执行模式
-Fleet 使用多进程+NCCL2模式（collective）以获得最好的性能. 在多进程模式下，每台服务器的每个GPU卡都会对应启动一个训练进程， 集群中的所有进程之间会互相通信完成训练。以此方式最大限度的降低进程内部资源抢占的开销。 对比在单进程开启ParallelGraph方法，多进程模式不但可以获得更高性能， 而且无需考虑reader在多卡下io性能不足的问题，直接使用多进程提升数据读取IO效率。
+Fleet 使用多进程+NCCL2模式（collective）以获得更好的性能。 在多进程模式下，每台服务器的每个GPU卡都会对应启动一个训练进程， 集群中的所有进程之间会互相通信完成训练。以此方式最大限度的降低进程内部资源抢占的开销。 对比在单进程开启ParallelGraph方法，多进程模式不但可以获得更高性能， 而且无需考虑reader在多卡下io性能不足的问题，直接使用多进程提升数据读取IO效率。
 
 使用ParallelGraph模式相对而言会减少多进程管理，并提升性能，而且可以无需修改代码，只需要开启下列开关即可：
 ```shell
@@ -88,8 +102,18 @@ dist_strategy.nccl_comm_num = 2
 ### 设置合适的CPU线程数
 PaddlePaddle Fluid使用“线程池” [[5]](https://en.wikipedia.org/wiki/Thread_pool) 模型调度并执行Op，Op在启动GPU计算之前， 通常需要CPU的协助，然而如果Op本身占用时间很小，“线程池”模型下又会带来额外的调度开销。 使用多进程模式时，如果神经网络的计算图 [[6]](https://en.wikipedia.org/wiki/Data-flow_diagram) 节点间有较高的并发度， 即使每个进程只在一个GPU上运行，使用多个线程可以更大限度的提升GPU利用率。
 
+根据以往的经验，对于CPU任务，num_threads=2 * ev_count 时性能较好，对于GPU任务，num_threads=4 * dev_count 时性能较好。注意：线程池不是越大越好。
+```python
+dist_strategy = fleet.DistributedStrategy()
+dist_strategy.thread_num = 3
+```
+
 ### 预先分配足够的显存
-通过设置环境变量 FLAGS_fraction_of_gpu_memory_to_use=0.7 设置预先分配的显存占比， 比如0.95是指95%的显存会预先分配。设置的范围是0.0~1.0。注意， 设置成0.0会让每次显存分配都调用 cudaMalloc 这样会极大的降低训练性能。
+通过设置环境变量 FLAGS_fraction_of_gpu_memory_to_use=0.7 设置预先分配的显存占比。
+由于CUDA原生的显存分配cuMalloc和释放cuFree操作均是同步操作，非常耗时，因此 通过 设置 FLAGS_fraction_of_gpu_memory_to_use 成一个较大的值，比如0.7，可以显著地加速训练的速度。
+
+0.7 是指 70%的显存会预先分配。设置的范围是0.0~1.0。注意， 设置成0.0会让每次显存分配都调用 cudaMalloc 这样会极大的降低训练性能。
+
 ```shell
 export FLAGS_fraction_of_gpu_memory_to_use=0.7
 ```
@@ -174,7 +198,7 @@ V100 GPU提供了 Tensor Core 可以在混合精度计算 场景极大的提升�
 |fuse_all_optimizer_ops|bool|False|表明是否融合(fuse) 是否融合 optimizer_op，仅对部分 optimizer 可用（SGD、Adam和Momentum），可使程序运行更快。|
 |enable_inplace|bool|False|表明是否Op的输出复用Op输入的显存空间，优化显存占用|
 |enable_backward_optimizer_op_deps|bool|True|在反向操作和参数更新操作之间添加依赖，保证在所有的反向操作都运行结束之后才开始运行参数更新操作. 在多卡训练时，打开该选项可能会提升训练速度。|
-|cache_runtime_context|bool|False|xxxxx|
+|cache_runtime_context|bool|False|unkown|
 
 #### ExecutionStrategy
 

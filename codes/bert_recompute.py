@@ -1,8 +1,5 @@
-import os
-import time
-import paddle
-import paddle.fluid as fluid
 import fleetx as X
+import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
@@ -16,7 +13,7 @@ data_loader = model.load_digital_dataset_from_file(
     data_dir='./train_data',
     vocab_path='./vocab.txt',
     max_seq_len=512,
-    batch_size=50,
+    batch_size=53,
 )
 
 dist_strategy = fleet.DistributedStrategy()
@@ -27,20 +24,5 @@ optimizer = fluid.optimizer.Adam(learning_rate=configs.lr)
 optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
 optimizer.minimize(model.loss)
 
-place = fluid.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
-exe = fluid.Executor(place)
-exe.run(fluid.default_startup_program())
-total_time = 0
-for i, data in enumerate(data_loader()):
-    if i >= 10:
-        start_time = time.time()
-    cost_val = exe.run(fluid.default_main_program(),
-                       feed=data,
-                       fetch_list=[model.loss.name])
-    if i >= 10:
-        end_time = time.time()
-        total_time += (end_time - start_time)
-        print(
-            "worker_index: %d, step%d cost = %f, total time cost = %f, step per second: %f, speed: %f"
-            % (fleet.worker_index(), i, cost_val[0], total_time,
-               (i - 9) / total_time, 1 / (end_time - start_time)))
+trainer = X.MultiGPUTrainer()
+trainer.fit(model, data_loader, start_step=10)

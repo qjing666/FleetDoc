@@ -216,9 +216,4 @@ t2 = time.time()
 print("Execution time: {}".format(t2 - t1))
 ```
 
-## 测试效果
 
-## 总结
-
-
-```

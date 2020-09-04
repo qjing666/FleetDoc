@@ -25,7 +25,7 @@ FleetX 并提供了简单易用的API 接口, 用户无须修改参数. 就可�
 |:---:|:---:|:---:|:---:|
 |[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
 |[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 128 | TBA |  76.3% |
-|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 256 | OOM |  OOM|
+|[VGG16-FP32](https://arxiv.org/abs/1708.03888)| 256 | OOM |  OOM |
 |[VGG16-AMP](https://arxiv.org/abs/1708.03888)| 256 | TBA |  76.3% |
 
 | imagenet | 单卡 batch size | 速度 img/s | top1 |

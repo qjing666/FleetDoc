@@ -90,7 +90,5 @@ source_suffix = {
     '.md': 'markdown',
 }
 
-import sys 
-# reload(sys) 
-sys.setdefaultencoding('utf8')
+
 

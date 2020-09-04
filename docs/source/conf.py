@@ -81,12 +81,16 @@ html_show_sourcelink = False
 html_static_path = ['_static']
 
 # for latex bug
-latex_elements = {
-'preamble': '''
 
-\usepackage{fontspec}
-\setsansfont{FreeSans}
-\setromanfont{FreeSerif}
-\setmonofont{FreeMono}
-''',
+extensions = ['recommonmark']
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
 }
+
+import sys 
+reload(sys) 
+sys.setdefaultencoding('utf8')
+

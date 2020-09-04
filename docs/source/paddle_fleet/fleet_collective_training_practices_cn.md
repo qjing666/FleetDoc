@@ -108,6 +108,20 @@ dist_strategy = fleet.DistributedStrategy()
 dist_strategy.thread_num = 3
 ```
 
+### 提高网络的吞吐
+多节点训练时网络的带宽常常成为训练的瓶颈。我们在实测中发现，当**使用自动混合精度训练后，TCP socket 的通信方式将成为训练速度的瓶颈， 使多节点训练无法充分利用 FLeet 混合精度计算带来的速度提升**。
+在我们实测中使用: 100Gb 网卡，`RDMA`[[7]](https://docs.nvidia.com/cuda/gpudirect-rdma/index.html) 和 `InfiniBand`[[8]](https://zh.wikipedia.org/wiki/InfiniBand)来提升网络带宽，使网络传输不会成为计算速度的瓶颈。
+在开始训练前，需要正确设置以下 NCCL 环境变量使对应硬件设置生效：
+
+| Env Name | Description |
+| --- | --- |
+| NCCL_SOCKET_IFNAME | The RDMA device, e.g. eth2 |
+| NCCL_P2P_DISABLE | Set to 1 to disable P2P transfer between GPUs |
+| NCCL_IB_DISABLE | Set to 1 to disable using RDMA |
+| NCCL_IB_CUDA_SUPPORT | Set to 1 to enable GPU Direct if supported |
+| NCCL_DEBUG | Set debug level: VERSION, WARN, INFO |
+
+
 ### 预先分配足够的显存
 通过设置环境变量 FLAGS_fraction_of_gpu_memory_to_use=0.7 设置预先分配的显存占比。
 由于CUDA原生的显存分配cuMalloc和释放cuFree操作均是同步操作，非常耗时，因此 通过 设置 FLAGS_fraction_of_gpu_memory_to_use 成一个较大的值，比如0.7，可以显著地加速训练的速度。
@@ -133,12 +147,6 @@ for pass_id in xrange(PASS_NUM):
             fetched = exe.run(fetch_list)
         else:
             exe.run([])
-```
-
-### 启用RDMA多机通信
-在使用NCCL2模式训练时，其会默认尝试开启RDMA通信，如果系统不支持， 则会自动降级为使用TCP通信。 可以通过打开环境变量 NCCL_DEBUG=INFO 查看NCCL是否选择了开启RDMA通信。 如果需要强制使用TCP方式通信，可以设置 NCCL_IB_DISABLE=1 
-```shell
-export NCCL_IB_DISABLE=1 
 ```
 
 ### 增大batch_size或使用设置通信频率（batch merge）

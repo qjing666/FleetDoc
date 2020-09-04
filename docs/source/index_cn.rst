@@ -30,6 +30,7 @@
    paddle_fleet/fleet_collective_training_speedup_with_amp_cn
    paddle_fleet/fleet_on_cloud_cn
    paddle_fleet/fleet_large_batch_training_techniques_cn
+   paddle_fleet/fleet_improve_large_batch_accuracy_cn.md
    paddle_fleet/fleet_and_edl_for_distillation_cn
    paddle_fleet/fleet_model_parallel_cn
    paddle_fleet/fleet_pipeline_parallel_cn
